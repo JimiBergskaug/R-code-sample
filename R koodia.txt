@@ -1,0 +1,158 @@
+### Assignment 3
+### made by Jimi Bergskaug, my University of Turku matriculation number is 515335
+
+EuData = read.csv("EUProteinConsumption.csv", header = T, stringsAsFactors = F)
+EuData
+
+ITData = read.csv("ItalianWineSamples.csv",header = T, stringsAsFactors = F)
+ITData
+
+####EUProteinConsumption.csv
+##1) First, please apply Hierarchical Clustering to this dataset using the four
+##linkage methods we have discussed in the course. Please also draw the
+##dendrogram for each linkage method. (6 points)
+
+EuData = read.csv("EUProteinConsumption.csv", header = T, stringsAsFactors = F)
+EuData
+any(is.na(EuData))
+
+EU_countries = EuData[,1]
+EU_countries
+
+EU_results = EuData[,-1]
+EU_results
+
+EuData_scaled = scale(EU_results)
+EuData_scaled = cbind(EU_countries, EuData_scaled)
+EuData_scaled
+
+distance = dist(EuData_scaled)
+
+hcl_complete = hclust(distance, method = "complete")
+hcl_complete
+
+hcl_single = hclust(distance, method = "single")
+hcl_single
+
+hcl_average = hclust(distance, method = "average")
+hcl_average
+
+hcl_ward = hclust(distance, method = "ward.D2")
+hcl_ward
+
+par(mfrow = c(2,2))
+plot(hcl_complete, cex = 0.8, hang = -1)
+plot(hcl_single, cex = 0.8, hang = -1)
+plot(hcl_average, cex = 0.8, hang = -1)
+plot(hcl_ward, cex = 0.8, hang = -1)
+par(mfrow = c(1,1))
+
+##) Please choose the appropriate linkage method and determine the optimal
+##number of clusters for the chosen one. Please explain your choice in detail.
+##(4 points)
+
+##I chose the ward method because it produced the lowest heights with a reasonable amount of 5 
+## clusters, with relatively same number of leaves in each branch. This way the clusters have relatively high internal similarity
+## as well as external dissimilarity
+
+hcl_ward_five_cluster_solution = cutree(hcl_ward, 5)
+hcl_ward_five_cluster_solution
+EuData
+EuData_ward = EuData
+EuData_ward$FiveClusterSolution = hcl_ward_five_cluster_solution
+EuData_ward
+table(EuData_ward$FiveClusterSolution)
+EuData_ward[EuData_ward$FiveClusterSolution==4,]
+
+###ItalianWineSamples.csv
+
+## 3) In this dataset, the samples come from three wine varietals, as indicated by
+###the "Type" variable. Please remove this variable first. (2 points)
+
+ITData = read.csv("ItalianWineSamples.csv",header = T, stringsAsFactors = F)
+ITData = ITData[,-1]
+any(is.na(ITData))
+head(ITData)
+ITData_scaled = scale(ITData)
+ITData_scaled
+
+
+##4) Please apply K-Means Clustering to the wine samples. First, please
+##determine the optimal number of clusters with the Elbow Method and
+##Average Silhouette Method, and then perform the K-Means Clustering
+##using the optimal K you have just identified. How many observations are
+##there in each cluster? (10 points)
+
+
+#### the elbow method
+
+k2 = kmeans(ITData_scaled, centers = 2, nstart = 25)
+
+## function for calculating the total Within cluster squared sum
+total_wss = function(k, data){
+  kmeans(data, k, nstart=25)$tot.withinss
+}
+##calculating TWSS for each K in 2 to 10
+total_wss_ITData = sapply(2:10, total_wss, data = ITData_scaled)
+total_wss_ITData
+
+plot(2:10, total_wss_ITData,
+     type = "b",
+     pch = 19,
+     frame = F,
+     xlab = "Number of clusters K",
+     ylab = "Total within-clusters sum of squares")
+
+## the elbow method suggets the 3-cluster solution is optimal
+
+### the average silhouette method
+
+install.packages("cluster")
+library("cluster")
+
+k2 = kmeans(ITData_scaled, centers = 2, nstart = 25)
+k2_cluster = k2$cluster
+d = dist(ITData_scaled, method = "euclidean")
+
+silhouette_coef_2_cluster_solution = silhouette(k2_cluster, d)
+silhouette_coef_2_cluster_solution
+mean(silhouette_coef_2_cluster_solution[,3])
+
+avg_sil = function(k, data){
+  kmeans_result = kmeans(data, k, nstart = 25)
+  silhouette_coefficient = silhouette(kmeans_result$cluster, dist(data))
+  mean(silhouette_coefficient[,3])
+}
+
+average_silhouette = sapply(2:10, avg_sil, data = ITData_scaled)
+average_silhouette
+
+plot(2:10, average_silhouette,
+     type = "b",
+     pch = 19,
+     frame = F,
+     xlab = "Number of clusters K",
+     ylab = "Average Silhouette")
+### The average silhouette method suggests the 3 cluster solution
+
+### COmbining both methods, I choose the 3 cluster solution as the optimal one
+
+#### 5)
+
+k5 = kmeans(ITData_scaled, centers = 5, nstart = 25)
+k5$cluster
+ITData$cluster = k5$cluster
+head(ITData)
+ITData_whole= read.csv("ItalianWineSamples.csv",header = T, stringsAsFactors = F)
+
+ITData$type = ITData_whole[,1]
+table(ITData$type)
+table(ITData$cluster)
+
+install.packages("ggplot2")
+library("ggplot2")
+ggplot(ITData, aes(cluster, type))+geom_jitter()
+
+## the jitterplot shows that with the 5-cluster solution, the clusters 1, 2 and 4 '
+## quite well represesent the winetype 2, while cluster 3 represesnts type 3 and 
+## cluster 5 represents type 1
